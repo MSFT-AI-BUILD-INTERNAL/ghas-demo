@@ -1,0 +1,20 @@
+name: "Dependency Review"
+
+# PR에서 새로 추가/변경된 의존성에 취약점이 있으면 CI를 실패시켜 병합을 막습니다.
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high # High 이상이면 실패 → merge 불가

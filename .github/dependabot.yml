@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # 파이썬 의존성 업데이트 PR 자동 생성 (보안 업데이트 포함)
+  - package-ecosystem: "pip"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+  # Actions 버전(codeql-action 등)도 최신으로 유지
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

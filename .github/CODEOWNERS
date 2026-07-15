@@ -1,0 +1,7 @@
+# 코드 소유자 — Ruleset의 "require code owner review" 데모용.
+# main 브랜치로의 변경은 아래 소유자 리뷰가 필요합니다.
+* @hy2219
+
+# 보안 민감 경로는 별도 지정 가능(예시):
+/app/            @hy2219
+/.github/        @hy2219
