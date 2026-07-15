@@ -1,0 +1,6 @@
+name: "CodeQL config"
+
+# 기본 보안 쿼리(security-extended) + 우리가 만든 커스텀 쿼리를 함께 실행
+queries:
+  - uses: security-extended
+  - uses: ./.github/codeql/custom-queries

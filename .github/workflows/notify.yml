@@ -1,0 +1,71 @@
+name: "Security Alert Notify (Teams)"
+
+# 데모용 알림 워크플로우.
+# CodeQL 스캔이 끝난 뒤(또는 수동 실행 시) 열려 있는 Code Scanning alert 수를
+# 세어서 Microsoft Teams로 요약 카드를 보냅니다.
+#
+# 사전 준비 (둘 중 하나):
+#  (A) Teams 채널 > ... > Workflows > "Post to a channel when a webhook request is received"
+#      => 생성된 URL을 저장소 Secret TEAMS_WEBHOOK_URL 로 등록. (신규 Teams 권장 방식, Adaptive Card)
+#  (B) 기존 Incoming Webhook(O365 커넥터) URL도 가능하나 곧 지원 종료 예정.
+# 이 워크플로우는 (A) Workflows(Adaptive Card) 형식으로 전송합니다.
+
+on:
+  workflow_run:
+    workflows: ["CodeQL"]
+    types: [completed]
+  workflow_dispatch: {} # 데모 중 수동 실행용
+
+permissions:
+  security-events: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    env:
+      TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+    steps:
+      - name: Count open code scanning alerts
+        id: count
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          alerts=$(gh api \
+            "repos/${{ github.repository }}/code-scanning/alerts?state=open&per_page=100" \
+            --jq 'length')
+          echo "count=$alerts" >> "$GITHUB_OUTPUT"
+          echo "열린 Code Scanning alert: $alerts 건"
+
+      - name: Send Teams notification
+        if: ${{ steps.count.outputs.count != '0' && env.TEAMS_WEBHOOK_URL != '' }}
+        env:
+          COUNT: ${{ steps.count.outputs.count }}
+          REPO: ${{ github.repository }}
+        run: |
+          cat > card.json <<EOF
+          {
+            "type": "message",
+            "attachments": [
+              {
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                  "\$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  "type": "AdaptiveCard",
+                  "version": "1.4",
+                  "body": [
+                    { "type": "TextBlock", "size": "Large", "weight": "Bolder",
+                      "color": "Attention", "text": "🚨 보안 취약점 alert ${COUNT}건" },
+                    { "type": "TextBlock", "wrap": true,
+                      "text": "저장소 **${REPO}** 에 열린 Code Scanning alert가 있습니다." }
+                  ],
+                  "actions": [
+                    { "type": "Action.OpenUrl", "title": "Security 탭에서 보기",
+                      "url": "https://github.com/${REPO}/security/code-scanning" }
+                  ]
+                }
+              }
+            ]
+          }
+          EOF
+          curl -sS -X POST -H 'Content-Type: application/json' \
+            --data @card.json "$TEAMS_WEBHOOK_URL"
